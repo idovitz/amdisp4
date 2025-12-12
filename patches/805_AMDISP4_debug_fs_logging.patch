@@ -1,16 +1,3 @@
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 80c966fde0b4..8478789ac265 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1145,6 +1145,8 @@ F:	drivers/media/platform/amd/isp4/Kconfig
- F:	drivers/media/platform/amd/isp4/Makefile
- F:	drivers/media/platform/amd/isp4/isp4.c
- F:	drivers/media/platform/amd/isp4/isp4.h
-+F:	drivers/media/platform/amd/isp4/isp4_debug.c
-+F:	drivers/media/platform/amd/isp4/isp4_debug.h
- F:	drivers/media/platform/amd/isp4/isp4_fw_cmd_resp.h
- F:	drivers/media/platform/amd/isp4/isp4_hw_reg.h
- F:	drivers/media/platform/amd/isp4/isp4_interface.c
 diff --git a/drivers/media/platform/amd/isp4/Makefile b/drivers/media/platform/amd/isp4/Makefile
 index 398c20ea7866..607151c0a2be 100644
 --- a/drivers/media/platform/amd/isp4/Makefile

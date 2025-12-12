@@ -1,16 +1,3 @@
-diff --git a/MAINTAINERS b/MAINTAINERS
-index 48ffc8bbdcee..80c966fde0b4 100644
---- a/MAINTAINERS
-+++ b/MAINTAINERS
-@@ -1151,6 +1151,8 @@ F:	drivers/media/platform/amd/isp4/isp4_interface.c
- F:	drivers/media/platform/amd/isp4/isp4_interface.h
- F:	drivers/media/platform/amd/isp4/isp4_subdev.c
- F:	drivers/media/platform/amd/isp4/isp4_subdev.h
-+F:	drivers/media/platform/amd/isp4/isp4_video.c
-+F:	drivers/media/platform/amd/isp4/isp4_video.h
-
- AMD KFD
- M:	Felix Kuehling <Felix.Kuehling@amd.com>
 diff --git a/drivers/media/platform/amd/isp4/Makefile b/drivers/media/platform/amd/isp4/Makefile
 index 6d4e6d6ac7f5..398c20ea7866 100644
 --- a/drivers/media/platform/amd/isp4/Makefile
