@@ -50,7 +50,7 @@ index 000000000000..de0092dad26f
 +amd_capture-objs := isp4.o
 diff --git a/drivers/media/platform/amd/isp4/isp4.c b/drivers/media/platform/amd/isp4/isp4.c
 new file mode 100644
-index 000000000000..e77713e4ea56
+index 000000000000..ad95e7f89189
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4.c
 @@ -0,0 +1,132 @@
@@ -164,9 +164,9 @@ index 000000000000..e77713e4ea56
 +	struct device *dev = &pdev->dev;
 +
 +	media_device_unregister(&isp_dev->mdev);
++	pm_runtime_disable(dev);
 +	v4l2_device_unregister(&isp_dev->v4l2_dev);
 +	media_device_cleanup(&isp_dev->mdev);
-+	pm_runtime_disable(dev);
 +}
 +
 +static struct platform_driver isp4_capture_drv = {
@@ -209,4 +209,4 @@ index 000000000000..7f2db0dfa2d9
 +};
 +
 +#endif /* _ISP4_H_ */
---
+-- 

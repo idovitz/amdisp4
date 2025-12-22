@@ -3,7 +3,7 @@ index 398c20ea7866..607151c0a2be 100644
 --- a/drivers/media/platform/amd/isp4/Makefile
 +++ b/drivers/media/platform/amd/isp4/Makefile
 @@ -4,6 +4,7 @@
-
+ 
  obj-$(CONFIG_AMD_ISP4) += amd_capture.o
  amd_capture-objs := isp4.o \
 +		    isp4_debug.o \
@@ -11,34 +11,34 @@ index 398c20ea7866..607151c0a2be 100644
  		    isp4_subdev.o \
  		    isp4_video.o
 diff --git a/drivers/media/platform/amd/isp4/isp4.c b/drivers/media/platform/amd/isp4/isp4.c
-index 91b4439a4b57..f35bc8f1a259 100644
+index b5470f6dc93e..93cb2d41320e 100644
 --- a/drivers/media/platform/amd/isp4/isp4.c
 +++ b/drivers/media/platform/amd/isp4/isp4.c
 @@ -10,6 +10,7 @@
  #include <media/v4l2-ioctl.h>
-
+ 
  #include "isp4.h"
 +#include "isp4_debug.h"
  #include "isp4_hw_reg.h"
-
+ 
  #define ISP4_DRV_NAME "amd_isp_capture"
-@@ -185,6 +186,7 @@ static int isp4_capture_probe(struct platform_device *pdev)
+@@ -186,6 +187,7 @@ static int isp4_capture_probe(struct platform_device *pdev)
  	}
-
+ 
  	platform_set_drvdata(pdev, isp_dev);
 +	isp_debugfs_create(isp_dev);
-
+ 
  	return 0;
-
-@@ -204,6 +206,8 @@ static void isp4_capture_remove(struct platform_device *pdev)
+ 
+@@ -205,6 +207,8 @@ static void isp4_capture_remove(struct platform_device *pdev)
  	struct isp4_device *isp_dev = platform_get_drvdata(pdev);
  	struct device *dev = &pdev->dev;
-
+ 
 +	isp_debugfs_remove(isp_dev);
 +
  	media_device_unregister(&isp_dev->mdev);
  	isp4sd_deinit(&isp_dev->isp_subdev);
- 	v4l2_device_unregister(&isp_dev->v4l2_dev);
+ 	pm_runtime_disable(dev);
 diff --git a/drivers/media/platform/amd/isp4/isp4_debug.c b/drivers/media/platform/amd/isp4/isp4_debug.c
 new file mode 100644
 index 000000000000..c6d957ea9132
@@ -364,18 +364,18 @@ index 000000000000..1a13762af502
 +
 +#endif /* _ISP4_DEBUG_H_ */
 diff --git a/drivers/media/platform/amd/isp4/isp4_interface.c b/drivers/media/platform/amd/isp4/isp4_interface.c
-index 2ab5029d39a9..bf7cf7996e01 100644
+index 914a93f9652e..c3b19bab7a02 100644
 --- a/drivers/media/platform/amd/isp4/isp4_interface.c
 +++ b/drivers/media/platform/amd/isp4/isp4_interface.c
 @@ -5,6 +5,7 @@
-
+ 
  #include <linux/iopoll.h>
-
+ 
 +#include "isp4_debug.h"
  #include "isp4_fw_cmd_resp.h"
  #include "isp4_hw_reg.h"
  #include "isp4_interface.h"
-@@ -297,8 +298,8 @@ static int isp4if_insert_isp_fw_cmd(struct isp4_interface *ispif, enum isp4if_st
+@@ -296,8 +297,8 @@ static int isp4if_insert_isp_fw_cmd(struct isp4_interface *ispif, enum isp4if_st
  	rd_ptr = isp4hw_rreg(ispif->mmio, rreg);
  	wr_ptr = isp4hw_rreg(ispif->mmio, wreg);
  	if (rd_ptr >= len || wr_ptr >= len) {
@@ -385,10 +385,10 @@ index 2ab5029d39a9..bf7cf7996e01 100644
 +			stream, isp4dbg_get_if_stream_str(stream), rd_ptr, wr_ptr, len, cmd_sz);
  		return -EINVAL;
  	}
-
-@@ -379,7 +380,8 @@ static int isp4if_send_fw_cmd(struct isp4_interface *ispif, u32 cmd_id, const vo
+ 
+@@ -378,7 +379,8 @@ static int isp4if_send_fw_cmd(struct isp4_interface *ispif, u32 cmd_id, const vo
  			u32 wr_ptr = isp4hw_rreg(ispif->mmio, rb_config->reg_wptr);
-
+ 
  			dev_err(dev,
 -				"failed to get free cmdq slot, stream (%d),rd %u, wr %u\n",
 +				"failed to get free cmdq slot, stream %s(%d),rd %u, wr %u\n",
@@ -396,8 +396,8 @@ index 2ab5029d39a9..bf7cf7996e01 100644
  				stream, rd_ptr, wr_ptr);
  			ret = -ETIMEDOUT;
  			goto free_ele;
-@@ -403,7 +405,8 @@ static int isp4if_send_fw_cmd(struct isp4_interface *ispif, u32 cmd_id, const vo
-
+@@ -402,7 +404,8 @@ static int isp4if_send_fw_cmd(struct isp4_interface *ispif, u32 cmd_id, const vo
+ 
  		ret = isp4if_insert_isp_fw_cmd(ispif, stream, &cmd);
  		if (ret) {
 -			dev_err(dev, "fail for insert_isp_fw_cmd cmd_id (0x%08x)\n", cmd_id);
@@ -406,7 +406,7 @@ index 2ab5029d39a9..bf7cf7996e01 100644
  			goto err_dequeue_ele;
  		}
  	}
-@@ -648,17 +651,17 @@ int isp4if_f2h_resp(struct isp4_interface *ispif, enum isp4if_stream_id stream,
+@@ -650,17 +653,17 @@ int isp4if_f2h_resp(struct isp4_interface *ispif, enum isp4if_stream_id stream,
  	if (checksum != resp->resp_check_sum) {
  		dev_err(dev, "resp checksum 0x%x,should 0x%x,rptr %u,wptr %u\n",
  			checksum, resp->resp_check_sum, rd_ptr, wr_ptr);
@@ -418,9 +418,9 @@ index 2ab5029d39a9..bf7cf7996e01 100644
 +			isp4dbg_get_resp_str(resp->resp_id), resp->resp_id);
  		return -EINVAL;
  	}
-
+ 
  	return 0;
-
+ 
  err_rb_invalid:
 -	dev_err(dev, "rb invalid: stream=%u, rd=%u, wr=%u, len=%u, resp_sz=%u\n",
 -		stream, rd_ptr, wr_ptr, len, resp_sz);
@@ -428,15 +428,15 @@ index 2ab5029d39a9..bf7cf7996e01 100644
 +		stream, isp4dbg_get_if_stream_str(stream), rd_ptr, wr_ptr, len, resp_sz);
  	return -EINVAL;
  }
-
+ 
 diff --git a/drivers/media/platform/amd/isp4/isp4_subdev.c b/drivers/media/platform/amd/isp4/isp4_subdev.c
-index 0fa646e37e8c..2612ca283fc0 100644
+index 8c33187efc54..21de6bc7fce0 100644
 --- a/drivers/media/platform/amd/isp4/isp4_subdev.c
 +++ b/drivers/media/platform/amd/isp4/isp4_subdev.c
 @@ -6,6 +6,7 @@
  #include <linux/pm_domain.h>
  #include <linux/units.h>
-
+ 
 +#include "isp4_debug.h"
  #include "isp4_fw_cmd_resp.h"
  #include "isp4_interface.h"
@@ -444,7 +444,7 @@ index 0fa646e37e8c..2612ca283fc0 100644
 @@ -255,9 +256,9 @@ static int isp4sd_setup_output(struct isp4_subdev *isp_subdev,
  		return -EINVAL;
  	}
-
+ 
 -	dev_dbg(dev, "channel:%d,fmt %d,w:h=%u:%u,lp:%u,cp%u\n",
 -		cmd_ch_prop.ch,
 -		cmd_ch_prop.image_prop.image_format,
@@ -457,36 +457,36 @@ index 0fa646e37e8c..2612ca283fc0 100644
 @@ -285,7 +286,7 @@ static int isp4sd_setup_output(struct isp4_subdev *isp_subdev,
  		return ret;
  	}
-
+ 
 -	dev_dbg(dev, "enable channel %d\n", cmd_ch_en.ch);
 +	dev_dbg(dev, "enable channel %s\n", isp4dbg_get_out_ch_str(cmd_ch_en.ch));
-
+ 
  	if (!sensor_info->start_stream_cmd_sent) {
  		ret = isp4sd_kickoff_stream(isp_subdev,
-@@ -392,8 +393,9 @@ static void isp4sd_fw_resp_cmd_done(struct isp4_subdev *isp_subdev,
+@@ -373,8 +374,9 @@ static void isp4sd_fw_resp_cmd_done(struct isp4_subdev *isp_subdev,
  		isp4if_rm_cmd_from_cmdq(ispif, para->cmd_seq_num, para->cmd_id);
  	struct device *dev = isp_subdev->dev;
-
+ 
 -	dev_dbg(dev, "stream %d,cmd (0x%08x)(%d),seq %u, ele %p\n",
 +	dev_dbg(dev, "stream %d,cmd %s(0x%08x)(%d),seq %u, ele %p\n",
  		stream_id,
 +		isp4dbg_get_cmd_str(para->cmd_id),
  		para->cmd_id, para->cmd_status, para->cmd_seq_num,
  		ele);
-
-@@ -468,9 +470,10 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
+ 
+@@ -449,9 +451,10 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
  		return;
  	}
-
+ 
 -	dev_dbg(dev, "ts:%llu,streamId:%d,poc:%u,preview_en:%u,(%i)\n",
 +	dev_dbg(dev, "ts:%llu,streamId:%d,poc:%u,preview_en:%u,%s(%i)\n",
  		ktime_get_ns(), stream_id, meta->poc,
  		meta->preview.enabled,
 +		isp4dbg_get_buf_done_str(meta->preview.status),
  		meta->preview.status);
-
+ 
  	if (meta->preview.enabled &&
-@@ -479,6 +482,8 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
+@@ -460,6 +463,8 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
  	     meta->preview.status == BUFFER_STATUS_DIRTY)) {
  		prev = isp4if_dequeue_buffer(ispif);
  		if (prev) {
@@ -495,7 +495,7 @@ index 0fa646e37e8c..2612ca283fc0 100644
  			isp4vid_handle_frame_done(&isp_subdev->isp_vdev,
  						  &prev->buf_info);
  			isp4if_dealloc_buffer_node(prev);
-@@ -486,8 +491,9 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
+@@ -467,8 +472,9 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
  			dev_err(dev, "fail null prev buf\n");
  		}
  	} else if (meta->preview.enabled) {
@@ -505,19 +505,19 @@ index 0fa646e37e8c..2612ca283fc0 100644
 +			meta->preview.status,
 +			isp4dbg_get_buf_done_str(meta->preview.status));
  	}
-
+ 
  	if (isp_subdev->sensor_info.status == ISP4SD_START_STATUS_STARTED)
-@@ -504,6 +510,9 @@ static void isp4sd_fw_resp_func(struct isp4_subdev *isp_subdev,
+@@ -485,6 +491,9 @@ static void isp4sd_fw_resp_func(struct isp4_subdev *isp_subdev,
  	struct device *dev = isp_subdev->dev;
  	struct isp4fw_resp resp;
-
+ 
 +	if (stream_id == ISP4IF_STREAM_ID_1)
 +		isp_fw_log_print(isp_subdev);
 +
  	while (true) {
  		if (isp4if_f2h_resp(ispif, stream_id, &resp)) {
  			/* Re-enable the interrupt */
-@@ -532,7 +541,9 @@ static void isp4sd_fw_resp_func(struct isp4_subdev *isp_subdev,
+@@ -513,7 +522,9 @@ static void isp4sd_fw_resp_func(struct isp4_subdev *isp_subdev,
  						  &resp.param.frame_done);
  			break;
  		default:
@@ -528,21 +528,13 @@ index 0fa646e37e8c..2612ca283fc0 100644
  			break;
  		}
  	}
-@@ -880,7 +891,6 @@ static int isp4sd_ioc_send_img_buf(struct v4l2_subdev *sd,
-
- error_release_buf_node:
- 	isp4if_dealloc_buffer_node(buf_node);
--
- 	return ret;
- }
-
 diff --git a/drivers/media/platform/amd/isp4/isp4_subdev.h b/drivers/media/platform/amd/isp4/isp4_subdev.h
-index 2d3844cf0152..ed4c6fac6b6a 100644
+index 386e4e68f3fa..942245a6f356 100644
 --- a/drivers/media/platform/amd/isp4/isp4_subdev.h
 +++ b/drivers/media/platform/amd/isp4/isp4_subdev.h
-@@ -116,6 +116,11 @@ struct isp4_subdev {
- 	int irq[ISP4SD_MAX_FW_RESP_STREAM_NUM];
+@@ -117,6 +117,11 @@ struct isp4_subdev {
  	bool irq_enabled;
+ 	/* spin lock to access ISP_SYS_INT0_EN exclusively */
  	spinlock_t irq_lock;
 +#ifdef CONFIG_DEBUG_FS
 +	bool enable_fw_log;
@@ -550,6 +542,6 @@ index 2d3844cf0152..ed4c6fac6b6a 100644
 +	char *fw_log_output;
 +#endif
  };
-
+ 
  int isp4sd_init(struct isp4_subdev *isp_subdev, struct v4l2_device *v4l2_dev,
 --

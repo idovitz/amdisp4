@@ -4,7 +4,7 @@ index de0092dad26f..a2a5bf98e912 100644
 +++ b/drivers/media/platform/amd/isp4/Makefile
 @@ -3,4 +3,5 @@
  # Copyright (C) 2025 Advanced Micro Devices, Inc.
-
+ 
  obj-$(CONFIG_AMD_ISP4) += amd_capture.o
 -amd_capture-objs := isp4.o
 +amd_capture-objs := isp4.o \
@@ -331,10 +331,10 @@ index 000000000000..d571b3873edb
 +#endif /* _ISP4_CMD_RESP_H_ */
 diff --git a/drivers/media/platform/amd/isp4/isp4_interface.c b/drivers/media/platform/amd/isp4/isp4_interface.c
 new file mode 100644
-index 000000000000..2ab5029d39a9
+index 000000000000..914a93f9652e
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4_interface.c
-@@ -0,0 +1,784 @@
+@@ -0,0 +1,786 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2025 Advanced Micro Devices, Inc.
@@ -607,8 +607,7 @@ index 000000000000..2ab5029d39a9
 +	guard(spinlock)(&ispif->cmdq_lock);
 +
 +	list_for_each_entry(buf_node, &ispif->cmdq, list) {
-+		if (buf_node->seq_num == seq_num &&
-+		    buf_node->cmd_id == cmd_id) {
++		if (buf_node->seq_num == seq_num && buf_node->cmd_id == cmd_id) {
 +			list_del(&buf_node->list);
 +			return buf_node;
 +		}
@@ -751,6 +750,7 @@ index 000000000000..2ab5029d39a9
 +			ret = -ETIMEDOUT;
 +			goto err_dequeue_ele;
 +		}
++
 +		ret = 0;
 +		goto put_ele_ref;
 +	}
@@ -765,10 +765,12 @@ index 000000000000..2ab5029d39a9
 +	 */
 +	if (ele && isp4if_rm_cmd_from_cmdq(ispif, seq_num, cmd_id))
 +		goto free_ele;
++
 +put_ele_ref:
 +	/* Don't free the command if we didn't put the last reference */
 +	if (ele && atomic_dec_return(&ele->refcnt))
 +		ele = NULL;
++
 +free_ele:
 +	kfree(ele);
 +	return ret;
@@ -1121,10 +1123,10 @@ index 000000000000..2ab5029d39a9
 +}
 diff --git a/drivers/media/platform/amd/isp4/isp4_interface.h b/drivers/media/platform/amd/isp4/isp4_interface.h
 new file mode 100644
-index 000000000000..2ec48e1a0503
+index 000000000000..01d5268f7d4c
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4_interface.h
-@@ -0,0 +1,140 @@
+@@ -0,0 +1,141 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
 + * Copyright (C) 2025 Advanced Micro Devices, Inc.
@@ -1223,6 +1225,7 @@ index 000000000000..2ec48e1a0503
 +{
 +	if (lo)
 +		*lo = addr & 0xffffffff;
++
 +	if (hi)
 +		*hi = addr >> 32;
 +}
@@ -1265,4 +1268,4 @@ index 000000000000..2ec48e1a0503
 +int isp4if_init(struct isp4_interface *ispif, struct device *dev, void __iomem *isp_mmio);
 +
 +#endif /* _ISP4_INTERFACE_H_ */
---
+-- 
