@@ -18,27 +18,28 @@ index 000000000000..8bfc1955f22e
 +obj-y += isp4/
 diff --git a/drivers/media/platform/amd/isp4/Kconfig b/drivers/media/platform/amd/isp4/Kconfig
 new file mode 100644
-index 000000000000..d4e4ad436600
+index 000000000000..55dd2dc453a2
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/Kconfig
-@@ -0,0 +1,14 @@
+@@ -0,0 +1,15 @@
 +# SPDX-License-Identifier: GPL-2.0+
 +
-+config AMD_ISP4
++config VIDEO_AMD_ISP4_CAPTURE
 +	tristate "AMD ISP4 and camera driver"
-+	depends on DRM_AMD_ISP && VIDEO_DEV
++	depends on DRM_AMD_ISP && VIDEO_DEV && HAS_DMA
 +	select VIDEOBUF2_CORE
 +	select VIDEOBUF2_MEMOPS
 +	select VIDEOBUF2_V4L2
++	select VIDEOBUF2_VMALLOC
 +	select VIDEO_V4L2_SUBDEV_API
 +	help
 +	  This is support for AMD ISP4 and camera subsystem driver.
 +	  Say Y here to enable the ISP4 and camera device for video capture.
 +	  To compile this driver as a module, choose M here. The module will
-+	  be called amd_capture.
++	  be called amd_isp4_capture.
 diff --git a/drivers/media/platform/amd/isp4/Makefile b/drivers/media/platform/amd/isp4/Makefile
 new file mode 100644
-index 000000000000..de0092dad26f
+index 000000000000..500b81ce5d14
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/Makefile
 @@ -0,0 +1,6 @@
@@ -46,14 +47,14 @@ index 000000000000..de0092dad26f
 +#
 +# Copyright (C) 2025 Advanced Micro Devices, Inc.
 +
-+obj-$(CONFIG_AMD_ISP4) += amd_capture.o
-+amd_capture-objs := isp4.o
++obj-$(CONFIG_VIDEO_AMD_ISP4_CAPTURE) += amd_isp4_capture.o
++amd_isp4_capture-objs := isp4.o
 diff --git a/drivers/media/platform/amd/isp4/isp4.c b/drivers/media/platform/amd/isp4/isp4.c
 new file mode 100644
-index 000000000000..ad95e7f89189
+index 000000000000..58b21258b6d3
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4.c
-@@ -0,0 +1,132 @@
+@@ -0,0 +1,127 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2025 Advanced Micro Devices, Inc.
@@ -64,8 +65,6 @@ index 000000000000..ad95e7f89189
 +#include <media/v4l2-ioctl.h>
 +
 +#include "isp4.h"
-+
-+#define VIDEO_BUF_NUM 5
 +
 +#define ISP4_DRV_NAME "amd_isp_capture"
 +
@@ -97,7 +96,6 @@ index 000000000000..ad95e7f89189
 +	struct device *dev = &pdev->dev;
 +	int irq[ARRAY_SIZE(isp4_irq)];
 +	struct isp4_device *isp_dev;
-+	size_t i;
 +	int ret;
 +
 +	isp_dev = devm_kzalloc(dev, sizeof(*isp_dev), GFP_KERNEL);
@@ -106,29 +104,27 @@ index 000000000000..ad95e7f89189
 +
 +	dev->init_name = ISP4_DRV_NAME;
 +
-+	for (i = 0; i < ARRAY_SIZE(isp4_irq); i++) {
++	for (size_t i = 0; i < ARRAY_SIZE(isp4_irq); i++) {
 +		irq[i] = platform_get_irq(pdev, isp4_irq[i].rb_int_num);
 +		if (irq[i] < 0)
-+			return dev_err_probe(dev, irq[i], "fail to get irq %d\n",
++			return dev_err_probe(dev, irq[i],
++					     "fail to get irq %d\n",
 +					     isp4_irq[i].rb_int_num);
 +
 +		ret = devm_request_irq(dev, irq[i], isp4_irq_handler,
 +				       IRQF_NO_AUTOEN, isp4_irq[i].name, dev);
 +		if (ret)
-+			return dev_err_probe(dev, ret, "fail to req irq %d\n", irq[i]);
++			return dev_err_probe(dev, ret, "fail to req irq %d\n",
++					     irq[i]);
 +	}
 +
-+	/* Link the media device within the v4l2_device */
 +	isp_dev->v4l2_dev.mdev = &isp_dev->mdev;
 +
-+	/* Initialize media device */
-+	strscpy(isp_dev->mdev.model, "amd_isp41_mdev", sizeof(isp_dev->mdev.model));
-+	snprintf(isp_dev->mdev.bus_info, sizeof(isp_dev->mdev.bus_info),
-+		 "platform:%s", ISP4_DRV_NAME);
++	strscpy(isp_dev->mdev.model, "amd_isp41_mdev",
++		sizeof(isp_dev->mdev.model));
 +	isp_dev->mdev.dev = dev;
 +	media_device_init(&isp_dev->mdev);
 +
-+	/* register v4l2 device */
 +	snprintf(isp_dev->v4l2_dev.name, sizeof(isp_dev->v4l2_dev.name),
 +		 "AMD-V4L2-ROOT");
 +	ret = v4l2_device_register(dev, &isp_dev->v4l2_dev);
@@ -209,4 +205,4 @@ index 000000000000..7f2db0dfa2d9
 +};
 +
 +#endif /* _ISP4_H_ */
--- 
+--
