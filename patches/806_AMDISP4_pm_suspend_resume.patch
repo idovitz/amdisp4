@@ -1,0 +1,97 @@
+diff --git a/drivers/media/platform/amd/isp4/isp4.c b/drivers/media/platform/amd/isp4/isp4.c
+index bf6b8e2..346f62d 100644
+--- a/drivers/media/platform/amd/isp4/isp4.c
++++ b/drivers/media/platform/amd/isp4/isp4.c
+@@ -221,11 +221,32 @@ static void isp4_capture_remove(struct platform_device *pdev)
+ 	media_device_cleanup(&isp_dev->mdev);
+ }
+ 
++static int isp4_suspend(struct device *dev)
++{
++	struct isp4_device *isp_dev = dev_get_drvdata(dev);
++
++	isp4sd_force_shutdown(&isp_dev->isp_subdev);
++	return 0;
++}
++
++static int isp4_resume(struct device *dev)
++{
++	/*
++	 * ISP hardware state was lost during suspend.
++	 * Driver state is clean (PWR_OFF). Userspace will
++	 * re-open the camera, triggering isp4sd_pwron_and_init().
++	 */
++	return 0;
++}
++
++static DEFINE_SIMPLE_DEV_PM_OPS(isp4_pm_ops, isp4_suspend, isp4_resume);
++
+ static struct platform_driver isp4_capture_drv = {
+ 	.probe = isp4_capture_probe,
+ 	.remove = isp4_capture_remove,
+ 	.driver = {
+ 		.name = ISP4_DRV_NAME,
++		.pm = pm_sleep_ptr(&isp4_pm_ops),
+ 	}
+ };
+ 
+diff --git a/drivers/media/platform/amd/isp4/isp4_subdev.c b/drivers/media/platform/amd/isp4/isp4_subdev.c
+index 48deea7..109ee75 100644
+--- a/drivers/media/platform/amd/isp4/isp4_subdev.c
++++ b/drivers/media/platform/amd/isp4/isp4_subdev.c
+@@ -607,6 +607,44 @@ static int isp4sd_start_resp_proc_threads(struct isp4_subdev *isp_subdev)
+ 	return 0;
+ }
+ 
++void isp4sd_force_shutdown(struct isp4_subdev *isp_subdev)
++{
++	struct isp4sd_sensor_info *sensor_info = &isp_subdev->sensor_info;
++	struct isp4_interface *ispif = &isp_subdev->ispif;
++	struct device *dev = isp_subdev->dev;
++
++	guard(mutex)(&isp_subdev->ops_mutex);
++
++	if (ispif->status == ISP4IF_STATUS_PWR_OFF)
++		return;
++
++	if (isp_subdev->irq_enabled) {
++		for (unsigned int i = 0; i < ISP4SD_MAX_FW_RESP_STREAM_NUM; i++)
++			disable_irq(isp_subdev->irq[i]);
++		isp_subdev->irq_enabled = false;
++	}
++
++	isp4sd_stop_resp_proc_threads(isp_subdev);
++
++	isp4if_stop(ispif);
++
++	isp4hw_wreg(isp_subdev->mmio, ISP_SOFT_RESET, 0);
++	isp4hw_wreg(isp_subdev->mmio, ISP_POWER_STATUS, 0);
++	pm_runtime_put_sync(dev);
++
++	ispif->status = ISP4IF_STATUS_PWR_OFF;
++	isp4if_clear_cmdq(ispif);
++	isp4if_clear_bufq(ispif);
++	isp4sd_module_enable(isp_subdev, false);
++
++	sensor_info->status = ISP4SD_START_STATUS_OFF;
++	sensor_info->output_info.start_status = ISP4SD_START_STATUS_OFF;
++	sensor_info->start_stream_cmd_sent = false;
++	sensor_info->buf_sent_cnt = 0;
++
++	dev_dbg(dev, "force shutdown complete\n");
++}
++
+ int isp4sd_pwroff_and_deinit(struct v4l2_subdev *sd)
+ {
+ 	struct isp4_subdev *isp_subdev = to_isp4_subdev(sd);
+diff --git a/drivers/media/platform/amd/isp4/isp4_subdev.h b/drivers/media/platform/amd/isp4/isp4_subdev.h
+index 20ea08a..5e1ea64 100644
+--- a/drivers/media/platform/amd/isp4/isp4_subdev.h
++++ b/drivers/media/platform/amd/isp4/isp4_subdev.h
+@@ -123,5 +123,6 @@ int isp4sd_ioc_send_img_buf(struct v4l2_subdev *sd,
+ 			    struct isp4if_img_buf_info *buf_info);
+ int isp4sd_pwron_and_init(struct v4l2_subdev *sd);
+ int isp4sd_pwroff_and_deinit(struct v4l2_subdev *sd);
++void isp4sd_force_shutdown(struct isp4_subdev *isp_subdev);
+ 
+ #endif /* _ISP4_SUBDEV_H_ */
