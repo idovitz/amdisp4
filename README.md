@@ -97,4 +97,4 @@ The module must be rebuilt for each kernel update. Either rebuild manually or se
 
 ## License
 
-GPL-2.0 — same as the upstream Linux kernel ISP4 driver.
+Same as the upstream Linux kernel ISP4 driver.
