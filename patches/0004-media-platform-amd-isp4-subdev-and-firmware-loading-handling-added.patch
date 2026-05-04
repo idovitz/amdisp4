@@ -32,7 +32,7 @@ index 58b21258b6d3..e62f5d652d81 100644
  
  static const struct {
  	const char *name;
-@@ -17,27 +22,103 @@ static const struct {
+@@ -17,27 +22,103 @@
  	u32 en_mask;
  	u32 ack_mask;
  	u32 rb_int_num;
@@ -138,7 +138,7 @@ index 58b21258b6d3..e62f5d652d81 100644
  	struct isp4_device *isp_dev;
  	int ret;
  
-@@ -47,6 +128,12 @@ static int isp4_capture_probe(struct platform_device *pdev)
+@@ -47,6 +128,12 @@
  
  	dev->init_name = ISP4_DRV_NAME;
  
@@ -151,7 +151,7 @@ index 58b21258b6d3..e62f5d652d81 100644
  	for (size_t i = 0; i < ARRAY_SIZE(isp4_irq); i++) {
  		irq[i] = platform_get_irq(pdev, isp4_irq[i].rb_int_num);
  		if (irq[i] < 0)
-@@ -55,7 +142,8 @@ static int isp4_capture_probe(struct platform_device *pdev)
+@@ -55,7 +142,8 @@
  					     isp4_irq[i].rb_int_num);
  
  		ret = devm_request_irq(dev, irq[i], isp4_irq_handler,
@@ -161,7 +161,7 @@ index 58b21258b6d3..e62f5d652d81 100644
  		if (ret)
  			return dev_err_probe(dev, ret, "fail to req irq %d\n",
  					     irq[i]);
-@@ -78,6 +166,13 @@ static int isp4_capture_probe(struct platform_device *pdev)
+@@ -78,6 +166,13 @@
  
  	pm_runtime_set_suspended(dev);
  	pm_runtime_enable(dev);
@@ -175,7 +175,7 @@ index 58b21258b6d3..e62f5d652d81 100644
  	ret = media_device_register(&isp_dev->mdev);
  	if (ret) {
  		dev_err_probe(dev, ret, "fail to register media device\n");
-@@ -89,6 +184,8 @@ static int isp4_capture_probe(struct platform_device *pdev)
+@@ -89,6 +184,8 @@
  	return 0;
  
  err_isp4_deinit:
@@ -184,7 +184,7 @@ index 58b21258b6d3..e62f5d652d81 100644
  	pm_runtime_disable(dev);
  	v4l2_device_unregister(&isp_dev->v4l2_dev);
  err_clean_media:
-@@ -103,6 +200,7 @@ static void isp4_capture_remove(struct platform_device *pdev)
+@@ -103,6 +200,7 @@
  	struct device *dev = &pdev->dev;
  
  	media_device_unregister(&isp_dev->mdev);
@@ -1375,4 +1375,3 @@ index 000000000000..ceade9fec5d9
 +int isp4sd_pwroff_and_deinit(struct v4l2_subdev *sd);
 +
 +#endif /* _ISP4_SUBDEV_H_ */
---

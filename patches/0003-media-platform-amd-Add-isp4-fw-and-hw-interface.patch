@@ -11,10 +11,10 @@ index 500b81ce5d14..c7eadd33fc97 100644
 +                         isp4_interface.o
 diff --git a/drivers/media/platform/amd/isp4/isp4_fw_cmd_resp.h b/drivers/media/platform/amd/isp4/isp4_fw_cmd_resp.h
 new file mode 100644
-index 000000000000..00350d8345fa
+index 000000000000..88bacb00355c
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4_fw_cmd_resp.h
-@@ -0,0 +1,321 @@
+@@ -0,0 +1,318 @@
 +/* SPDX-License-Identifier: GPL-2.0+ */
 +/*
 + * Copyright (C) 2025 Advanced Micro Devices, Inc.
@@ -24,7 +24,6 @@ index 000000000000..00350d8345fa
 +#define _ISP4_FW_CMD_RESP_H_
 +
 +/*
-+ * @brief Host and Firmware command & response channel.
 + *        Two types of command/response channel.
 + *          Type Global Command has one command/response channel.
 + *          Type Stream Command has one command/response channel.
@@ -57,7 +56,6 @@ index 000000000000..00350d8345fa
 + */
 +
 +/*
-+ * @brief command ID format
 + *        cmd_id is in the format of following type:
 + *        type: indicate command type, global/stream commands.
 + *        group: indicate the command group.
@@ -90,7 +88,6 @@ index 000000000000..00350d8345fa
 +					 | ISP4FW_CMD_GROUP_STREAM_BUFFER | 0x1)
 +
 +/*
-+ * @brief response ID format
 + *        resp_id is in the format of following type:
 + *        type: indicate command type, global/stream commands.
 + *        group: indicate the command group.
@@ -276,7 +273,7 @@ index 000000000000..00350d8345fa
 +struct isp4fw_buffer {
 +	/*
 +	 * A check num for debug usage, host can set the buf_tags
-+	 * to different number
++	 * to different numbers
 +	 */
 +	u32 buf_tags;
 +	union {
@@ -338,10 +335,10 @@ index 000000000000..00350d8345fa
 +#endif /* _ISP4_FW_CMD_RESP_H_ */
 diff --git a/drivers/media/platform/amd/isp4/isp4_interface.c b/drivers/media/platform/amd/isp4/isp4_interface.c
 new file mode 100644
-index 000000000000..c1a25f45987f
+index 000000000000..c35ff5c7273e
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4_interface.c
-@@ -0,0 +1,815 @@
+@@ -0,0 +1,827 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2025 Advanced Micro Devices, Inc.
@@ -590,7 +587,10 @@ index 000000000000..c1a25f45987f
 +	rd_ptr = isp4hw_rreg(ispif->mmio, rreg);
 +	wr_ptr = isp4hw_rreg(ispif->mmio, wreg);
 +
-+	/* Read and write pointers are equal, indicating the ringbuf is empty */
++	/*
++	 * Read and write pointers are equal, indicating the ring buffer
++	 * is empty
++	 */
 +	if (wr_ptr == rd_ptr)
 +		return false;
 +
@@ -601,8 +601,8 @@ index 000000000000..c1a25f45987f
 +
 +	/*
 +	 * Ignore one byte from the bytes free to prevent rd_ptr from equaling
-+	 * wr_ptr when the ringbuf is full, because rd_ptr == wr_ptr is
-+	 * supposed to indicate that the ringbuf is empty.
++	 * wr_ptr when the ring buffer is full, because rd_ptr == wr_ptr is
++	 * supposed to indicate that the ring buffer is empty.
 +	 */
 +	return bytes_free <= sizeof(struct isp4fw_cmd);
 +}
@@ -654,7 +654,10 @@ index 000000000000..c1a25f45987f
 +		memcpy(mem_sys + wr_ptr, src, cmd_sz);
 +		isp4hw_wreg(ispif->mmio, wreg, (wr_ptr + cmd_sz) % len);
 +	} else {
-+		/* FW cmd is split because the ringbuf needs to wrap around */
++		/*
++		 * FW cmd is split because the ring buffer needs to wrap
++		 * around
++		 */
 +		memcpy(mem_sys + wr_ptr, src, bytes_to_end);
 +		memcpy(mem_sys, src + bytes_to_end, cmd_sz - bytes_to_end);
 +		isp4hw_wreg(ispif->mmio, wreg, cmd_sz - bytes_to_end);
@@ -992,7 +995,10 @@ index 000000000000..c1a25f45987f
 +	if (rd_ptr >= len || wr_ptr >= len)
 +		goto err_rb_invalid;
 +
-+	/* Read and write pointers are equal, indicating the ringbuf is empty */
++	/*
++	 * Read and write pointers are equal, indicating the ring buffer is
++	 * empty
++	 */
 +	if (rd_ptr == wr_ptr)
 +		return -ENODATA;
 +
@@ -1005,7 +1011,10 @@ index 000000000000..c1a25f45987f
 +		memcpy(dst, mem_sys + rd_ptr, resp_sz);
 +		isp4hw_wreg(ispif->mmio, rreg, (rd_ptr + resp_sz) % len);
 +	} else {
-+		/* FW response is split because the ringbuf wrapped around */
++		/*
++		 * FW response is split because the ring buffer wrapped
++		 * around
++		 */
 +		if (wr_ptr > rd_ptr || wr_ptr < resp_sz - bytes_to_end)
 +			goto err_rb_invalid;
 +
@@ -1307,4 +1316,3 @@ index 000000000000..ce3ac9b9e5cd
 +		void __iomem *isp_mmio);
 +
 +#endif /* _ISP4_INTERFACE_H_ */
--- 
