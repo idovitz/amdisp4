@@ -14,7 +14,7 @@ diff --git a/drivers/media/platform/amd/isp4/isp4.c b/drivers/media/platform/amd
 index e62f5d652d81..9480dfffbcb2 100644
 --- a/drivers/media/platform/amd/isp4/isp4.c
 +++ b/drivers/media/platform/amd/isp4/isp4.c
-@@ -173,6 +173,17 @@ static int isp4_capture_probe(struct platform_device *pdev)
+@@ -173,6 +173,17 @@
  		goto err_pm_disable;
  	}
  
@@ -36,7 +36,7 @@ diff --git a/drivers/media/platform/amd/isp4/isp4_subdev.c b/drivers/media/platf
 index 6d571b7f8840..5202232d50c5 100644
 --- a/drivers/media/platform/amd/isp4/isp4_subdev.c
 +++ b/drivers/media/platform/amd/isp4/isp4_subdev.c
-@@ -467,11 +467,13 @@ static void isp4sd_fw_resp_frame_done(struct isp4_subdev *isp_subdev,
+@@ -467,11 +467,13 @@
  	     meta->preview.status == ISP4FW_BUFFER_STATUS_DONE ||
  	     meta->preview.status == ISP4FW_BUFFER_STATUS_DIRTY)) {
  		prev = isp4if_dequeue_buffer(ispif);
@@ -53,7 +53,7 @@ index 6d571b7f8840..5202232d50c5 100644
  	} else if (meta->preview.enabled) {
  		dev_err(dev, "fail bad preview status %u\n",
  			meta->preview.status);
-@@ -1006,6 +1008,10 @@ int isp4sd_init(struct isp4_subdev *isp_subdev, struct v4l2_device *v4l2_dev,
+@@ -1006,6 +1008,10 @@
  	isp_subdev->host2fw_seq_num = 1;
  	ispif->status = ISP4IF_STATUS_PWR_OFF;
  
@@ -64,7 +64,7 @@ index 6d571b7f8840..5202232d50c5 100644
  	return 0;
  
  err_subdev_unreg:
-@@ -1020,6 +1026,7 @@ void isp4sd_deinit(struct isp4_subdev *isp_subdev)
+@@ -1020,6 +1026,7 @@
  {
  	struct isp4_interface *ispif = &isp_subdev->ispif;
  
@@ -84,7 +84,7 @@ index ceade9fec5d9..ddf6bdf4a62a 100644
  
  /*
   * One is for none sensor specific response which is not used now.
-@@ -83,6 +84,7 @@ struct isp4_subdev_thread_param {
+@@ -83,6 +84,7 @@
  struct isp4_subdev {
  	struct v4l2_subdev sdev;
  	struct isp4_interface ispif;
@@ -94,10 +94,10 @@ index ceade9fec5d9..ddf6bdf4a62a 100644
  
 diff --git a/drivers/media/platform/amd/isp4/isp4_video.c b/drivers/media/platform/amd/isp4/isp4_video.c
 new file mode 100644
-index 000000000000..15a7d7c1e4c6
+index 000000000000..0cebb39f98e1
 --- /dev/null
 +++ b/drivers/media/platform/amd/isp4/isp4_video.c
-@@ -0,0 +1,799 @@
+@@ -0,0 +1,797 @@
 +// SPDX-License-Identifier: GPL-2.0+
 +/*
 + * Copyright (C) 2025 Advanced Micro Devices, Inc.
@@ -113,7 +113,7 @@ index 000000000000..15a7d7c1e4c6
 +
 +#define ISP4VID_ISP_DRV_NAME "amd_isp_capture"
 +#define ISP4VID_MAX_PREVIEW_FPS 30
-+#define ISP4VID_DEFAULT_FMT isp4vid_formats[0]
++#define ISP4VID_DEFAULT_FMT V4L2_PIX_FMT_NV12
 +
 +#define ISP4VID_PAD_VIDEO_OUTPUT 0
 +
@@ -786,8 +786,6 @@ index 000000000000..15a7d7c1e4c6
 +
 +static const struct vb2_ops isp4vid_qops = {
 +	.queue_setup = isp4vid_qops_queue_setup,
-+	.wait_prepare = vb2_ops_wait_prepare,
-+	.wait_finish = vb2_ops_wait_finish,
 +	.buf_init = isp4vid_qops_buf_init,
 +	.buf_cleanup = isp4vid_qops_buf_cleanup,
 +	.start_streaming = isp4vid_qops_start_streaming,
@@ -960,4 +958,3 @@ index 000000000000..c66451e26166
 +			       const struct isp4if_img_buf_info *img_buf);
 +
 +#endif /* _ISP4_VIDEO_H_ */
---
